@@ -1,3 +1,7 @@
+(require 'json)
+(require 'url)
+
+
 (defun reddit ()
   (interactive)
   (when (not
@@ -17,20 +21,34 @@
 (defun reddit-all ()
   "fetch r/all"
   (interactive)
-  (message "... loading"))
+  (message "... loading")
+  (insert (reddit-fetch-plist "http://localhost/foo.html")))
 
+(defun reddit-fetch-plist (dest)
+  (interactive)
+  "Contacts API, fetches the JSON into a plist and returns "
+  (let ((buffer (url-retrieve-synchronously dest)))
+    (with-current-buffer buffer
+      (re-search-forward "^$")
+      (json-read))))
 
+(defun reddit-list-posts (data)
+  (let ((inhibit-read-only t))
+    (insert "test")))
+  
 (defun reddit-quit ()
   "Commands to perform when reddit-mode is closed"
   (interactive)
   (kill-buffer reddit-buffer-name))
+
+
 
 (define-derived-mode reddit-mode nil "reddit"
   "reddit mode"
   (use-local-map reddit-mode-map)
   (setq buffer-read-only t))
 
-(defconst reddit-index-url "http://www.reddit.com/"
+(defconst reddit-index-url "http://localhost/"
   "reddit's index page")
 
 (defconst reddit-api-url "http://www.reddit.com/dev/api"

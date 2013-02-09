@@ -1,3 +1,0 @@
-
-* TODO On quit?
-  * quit-window, kill-buffer? both?

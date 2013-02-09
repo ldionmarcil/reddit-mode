@@ -1,0 +1,21 @@
+#+OPTIONS: toc:nil num:nil
+#+TITLE: emacs reddit-mode
+#+STYLE: <link rel="stylesheet" type="text/css" href="worg.css" />
+* TODO On quit?
+  * quit-window, kill-buffer? both?
+
+* TODO Define use cases
+
+* TODO User Interface?
+
+* TODO Single window or one for each sub?
+  
+* Tools
+** Python json beautifier
+   ~(shell-command-on-region "python -mjson.tool")~
+* Notes
+** plist is fetchable. parsing is required...
+
+* References  
+  * [[https://github.com/death][existing reddit-mode]]
+  * [[http://frozenlock.org/2012/07/07/url-retrieve-and-json-api/#comment-260][json to plist]]
