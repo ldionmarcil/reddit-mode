@@ -22,15 +22,22 @@
   "fetch r/all"
   (interactive)
   (message "... loading")
-  (insert (reddit-fetch-plist "http://localhost/foo.html")))
+  (reddit-fetch-plist "http://localhost/foo.html"))
 
 (defun reddit-fetch-plist (dest)
+  "Contacts API, fetches the JSON into a plist and returns"
   (interactive)
-  "Contacts API, fetches the JSON into a plist and returns "
   (let ((buffer (url-retrieve-synchronously dest)))
     (with-current-buffer buffer
-      (re-search-forward "^$")
-      (json-read))))
+      (goto-char url-http-end-of-headers)
+      (reddit-parse-list (json-read)))))
+
+(defun reddit-parse-list (list-data)
+  (let ((data (cdr (assoc 'data list-data))))
+    (message "%S" data)))
+;;  (length list-data))
+
+
 
 (defun reddit-list-posts (data)
   (let ((inhibit-read-only t))
