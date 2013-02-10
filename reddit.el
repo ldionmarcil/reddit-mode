@@ -15,33 +15,35 @@
   (let ((map (make-sparse-keymap)))
     (define-key map "q" 'reddit-quit)
     (define-key map "a" 'reddit-all)
+    (define-key map "l" 'reddit-list-posts)
     map)
   "Keymap reddit-mode")
 
 (defun reddit-all ()
   "fetch r/all"
   (interactive)
-  (message "... loading")
   (reddit-fetch-plist "http://localhost/foo.html"))
 
 (defun reddit-fetch-plist (dest)
   "Contacts API, fetches the JSON into a plist and returns"
   (interactive)
-  (let ((buffer (url-retrieve-synchronously dest)))
+  (let ((buffer (url-retrieve-synchronously dest))
+	(inhibit-read-only t))
     (with-current-buffer buffer
       (goto-char url-http-end-of-headers)
       (reddit-parse-list (json-read)))))
 
 (defun reddit-parse-list (list-data)
   (let ((data (cdr (assoc 'data list-data))))
-    (message "%S" data)))
-;;  (length list-data))
+    (with-current-buffer reddit-buffer-name
+      (erase-buffer)
+      (insert data))))
 
-
-
-(defun reddit-list-posts (data)
+(defun reddit-list-posts ()
+  (interactive)
   (let ((inhibit-read-only t))
     (insert "test")))
+
   
 (defun reddit-quit ()
   "Commands to perform when reddit-mode is closed"
@@ -72,3 +74,5 @@
   (let ((version-string
 	(format "%s" reddit-version-string)))
     (message version-string)))
+
+(provide 'reddit)
