@@ -1,6 +1,6 @@
 (require 'json)
 (require 'url)
-
+(require 'cl)
 
 (defun reddit ()
   (interactive)
@@ -14,30 +14,75 @@
 (defvar reddit-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "q" 'reddit-quit)
-    (define-key map "a" 'reddit-all)
-    (define-key map "l" 'reddit-list-posts)
+    (define-key map "l" 'reddit-display-subreddit)
     map)
   "Keymap reddit-mode")
 
-(defun reddit-all ()
-  "fetch r/all"
-  (interactive)
-  (reddit-fetch-plist "http://localhost/foo.html"))
-
-(defun reddit-fetch-plist (dest)
+(defun reddit-fetch-subreddit (&optional dest)
   "Contacts API, fetches the JSON into a plist and returns"
-  (interactive)
-  (let ((buffer (url-retrieve-synchronously dest))
+  (interactive "P")
+  (let ((buffer (url-retrieve-synchronously (concat reddit-index-url (if dest "r/" "") dest ".json")))
 	(inhibit-read-only t))
+    (message (concat reddit-index-url (if dest "r/" "") dest ".json"))
     (with-current-buffer buffer
       (goto-char url-http-end-of-headers)
       (reddit-parse-list (json-read)))))
 
 (defun reddit-parse-list (list-data)
+  "retrieves children nodes from a main data list"
   (let ((data (cdr (assoc 'data list-data))))
+    (let ((children (cdr (assoc 'children data))))
+      (loop for a across children
+	    for n from 0 do
+	    (reddit-show-post a n)))))
+
+(defun reddit-show-post (alist n)
+  "add a post to the reddit buffer"
+  (let ((a (cdr (assoc 'data alist)))
+	(inhibit-read-only t))
     (with-current-buffer reddit-buffer-name
-      (erase-buffer)
-      (insert data))))
+      (widget-create (get-data (author score num_comments title subreddit) a 
+			       (list 'reddit-entry
+				     :format reddit-entry-format
+				     :post-id n
+				     :reddit-author author
+				     :reddit-score score
+				     :reddit-comments num_comments
+				     :reddit-title title
+				     :reddit-subreddit subreddit))))))
+
+    
+(define-widget 'reddit-entry 'url-link
+  "A widget representing a Reddit entry."
+  :format-handler 'reddit-entry-format)
+
+
+(defvar reddit-entry-format "%B. (%Cpts) %E (by %A, %D comments) r/%G\n")
+
+(defmacro get-data (keys data &rest body)
+	 `(let* (,@(loop for key in keys
+			 collecting `(,key (assoc-default ',key ,data))))
+	    ,@body))
+
+(defun reddit-entry-format (widget char)
+  (case char
+    (?A (insert (widget-get widget :reddit-author)))
+    (?B (insert (format "%d" (widget-get widget :post-id))))
+    (?C (insert (format "%d" (widget-get widget :reddit-score))))
+    (?D (insert (format "%d" (widget-get widget :reddit-comments))))
+    (?E (insert (widget-get widget :reddit-title)))
+    (?G (insert (widget-get widget :reddit-subreddit)))
+    (t (widget-default-format-handler widget char))))
+
+
+(defun make-post ()
+  (list ))
+
+(defun reddit-display-subreddit (&optional subreddit-name)
+  (interactive "P")
+  (if subreddit-name
+      (reddit-fetch-subreddit subreddit-name)
+    (reddit-fetch-subreddit)))
 
 (defun reddit-list-posts ()
   (interactive)
@@ -51,13 +96,12 @@
   (kill-buffer reddit-buffer-name))
 
 
-
 (define-derived-mode reddit-mode nil "reddit"
   "reddit mode"
   (use-local-map reddit-mode-map)
   (setq buffer-read-only t))
 
-(defconst reddit-index-url "http://localhost/"
+(defconst reddit-index-url "http://www.reddit.com/"
   "reddit's index page")
 
 (defconst reddit-api-url "http://www.reddit.com/dev/api"
@@ -74,5 +118,7 @@
   (let ((version-string
 	(format "%s" reddit-version-string)))
     (message version-string)))
+
+(defvar reddit-entry-format "%N. %[%T%] (%D, %C comments)\n")
 
 (provide 'reddit)
