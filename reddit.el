@@ -13,6 +13,7 @@
     
 (defvar reddit-mode-map
   (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map widget-keymap)
     (define-key map "q" 'reddit-quit)
     (define-key map "l" 'reddit-display-subreddit)
     map)
@@ -23,7 +24,6 @@
   (interactive "P")
   (let ((buffer (url-retrieve-synchronously (concat reddit-index-url (if dest "r/" "") dest ".json")))
 	(inhibit-read-only t))
-    (message (concat reddit-index-url (if dest "r/" "") dest ".json"))
     (with-current-buffer buffer
       (goto-char url-http-end-of-headers)
       (reddit-parse-list (json-read)))))
@@ -34,37 +34,46 @@
     (let ((children (cdr (assoc 'children data))))
       (loop for a across children
 	    for n from 0 do
-	    (reddit-show-post a n)))))
+	    (reddit-show-post a n))
+      (widget-setup))))
 
 (defun reddit-show-post (alist n)
   "add a post to the reddit buffer"
   (let ((a (cdr (assoc 'data alist)))
 	(inhibit-read-only t))
     (with-current-buffer reddit-buffer-name
-      (widget-create (get-data (author score num_comments title subreddit) a 
-			       (list 'reddit-entry
-				     :format reddit-entry-format
+      ;; (widget-create 'toggle :on "-" :off "+" :format "%[%v%] ")
+      (widget-create (get-data (author score num_comments title subreddit)
+			       a
+			       (list 'reddit-post
+				     :format "%vfoo foo %[click-me%] bar bar bar\n"
+				     :notify (lambda (widget &rest ignore)
+					       (interactive)
+					       (message "clicked!"))
 				     :post-id n
 				     :reddit-author author
 				     :reddit-score score
 				     :reddit-comments num_comments
 				     :reddit-title title
-				     :reddit-subreddit subreddit))))))
+				     :reddit-subreddit subreddit
+				     :buttons "foo"))))))
 
-    
-(define-widget 'reddit-entry 'url-link
+(define-widget 'reddit-post 'push-button
   "A widget representing a Reddit entry."
-  :format-handler 'reddit-entry-format)
+  :format-handler 'reddit-post-format
+  :value-create 'reddit-value-create)
 
+(defun reddit-value-create (widget)
+  (message "trigger"))
 
-(defvar reddit-entry-format "%B. (%Cpts) %E (by %A, %D comments) r/%G\n")
+(defvar reddit-post-format "%[%B. (%Cpts) %E (by %A, %D comments) r/%G%]\n")
 
 (defmacro get-data (keys data &rest body)
 	 `(let* (,@(loop for key in keys
 			 collecting `(,key (assoc-default ',key ,data))))
 	    ,@body))
 
-(defun reddit-entry-format (widget char)
+(defun reddit-post-format (widget char)
   (case char
     (?A (insert (widget-get widget :reddit-author)))
     (?B (insert (format "%d" (widget-get widget :post-id))))
@@ -82,7 +91,8 @@
   (interactive "P")
   (if subreddit-name
       (reddit-fetch-subreddit subreddit-name)
-    (reddit-fetch-subreddit)))
+    (reddit-fetch-subreddit))
+  (widget-setup))
 
 (defun reddit-list-posts ()
   (interactive)
@@ -101,7 +111,10 @@
   (use-local-map reddit-mode-map)
   (setq buffer-read-only t))
 
-(defconst reddit-index-url "http://www.reddit.com/"
+;; (defconst reddit-index-url "http://www.reddit.com/"
+;;   "reddit's index page")
+
+(defconst reddit-index-url "http://localhost/"
   "reddit's index page")
 
 (defconst reddit-api-url "http://www.reddit.com/dev/api"
@@ -118,7 +131,5 @@
   (let ((version-string
 	(format "%s" reddit-version-string)))
     (message version-string)))
-
-(defvar reddit-entry-format "%N. %[%T%] (%D, %C comments)\n")
 
 (provide 'reddit)
